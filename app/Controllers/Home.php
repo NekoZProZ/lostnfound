@@ -80,11 +80,11 @@ class Home extends BaseController
 			
 		// 	$where=array('logo_id' => '1');
 		// $logo['menu'] = $model->getwhere('logo',$where);
-		// $where1=array('id_user' =>session()->get('id'));
-		// $logo['acc'] = $model->getwhere('menu',$where1);
+		$where1=array('id_user' =>session()->get('id'));
+		$data['acc'] = $model->getwhere('tb_users',$where1);
 		echo view('header', $this->logo);
 		echo view('menu', $this->logo);
-		echo view('dashboard');
+		echo view('dashboard',$data);
 		echo view('footer');
 		//echo view('theme_panel');
 		}else{
@@ -179,19 +179,33 @@ class Home extends BaseController
         // Check if the response was successful
         if ($response && $http_code >= 200 && $http_code < 300) {
             // Online
-            $data['capt'] = [
-                'status' => 'online'
-            ];
+			$data['capt'] = (object) ['status' => 'online'];
+            // $data['capt'] = [
+            //     'status' => 'online'
+            // ];
         } else {
             // Offline
-            $data['capt'] = [
-                'status' => 'offline'
-            ];
+			$data['capt'] = (object) ['status' => 'offline'];
+            // $data['capt'] = [
+            //     'status' => 'offline'
+            // ];
         }
 				$model=new M_kk;
 			$where=array('logo_id' => '1');
+
+			// $data['logo'] = ;
+
+			$data = [
+				'logo' => $this->logo['logo'],
+				'capt' => $data['capt'],
+				// Add more data as needed
+			];
+			
+			
+
+			// print_r($data);
 		
-		echo view('login', $this->logo);
+		echo view('login', $data);
 		
 	}
 
@@ -216,20 +230,20 @@ public function aksi_login()
 		$model=new M_kk;
 		//print_r($table);
 		//$cek = $model->getwhere('user',$login);
-		if ($tb==1){
-			$cek = $model->getwhere('tb_masyarakat',$login);
+		// if ($tb==1){
+		// 	$cek = $model->getwhere('tb_masyarakat',$login);
+		// 	session()->set('nama',$cek->username);
+		// 	session()->set('id',$cek->id_user);
+		// 	if ($cek>0){
+		// 	session()->set('level','3');
+		// 	}
+		// }
+		// if ($tb==2){
+			$cek = $model->getwhere('tb_users',$login);
 			session()->set('nama',$cek->username);
 			session()->set('id',$cek->id_user);
-			if ($cek>0){
-			session()->set('level','3');
-			}
-		}
-		if ($tb==2){
-			$cek = $model->getwhere('tb_petugas',$login);
-			session()->set('nama',$cek->username);
-			session()->set('id',$cek->id_petugas);
 			session()->set('level',$cek->id_level);
-		}
+		// }
 		
 
 		if ($cek>0){
@@ -260,49 +274,48 @@ public function aksi_login()
 	{
 		$model=new M_kk;
 
-		$first = $this->request->getPost('first_name');
-		$last = $this->request->getPost('last_name');
+		$user = $this->request->getPost('username');
+		$nama = $this->request->getPost('nama');
 		$pass = md5($this->request->getPost('password'));
-		$email = $this->request->getPost('email');
+		//$email = $this->request->getPost('email');
 
 		// Extract domain from email
-    	$domain = explode('@', $email)[1];
+    	// $domain = explode('@', $email)[1];
+		
 
-    	// Check if domain is from Google
-    	if ($model->checkGoogleDomain($domain)) {
+    	// // Check if domain is from Google
+    	// if ($model->checkGoogleDomain($domain)) {
         //echo "Valid Google email address";
     		$storage=array(
-		'username'=>$first . ' ' . $last,
+		'nama_user'=>$nama,
+		'username'=>$user,
 		'password'=>$pass,
-		'email'=>$email,
-		'level'=> 1
+		
+		'id_level'=> 2
 		);
+		//print_r($storage);
 
 		//print_r($storage);
-    	$model->tambah('user',$storage);
+    	$model->tambah('tb_users',$storage);
 
 		$login=array(
-		'email'=>$email,
+		'username'=>$user,
 		'password'=>$pass
 		
 		);
 
-		$cek = $model->getwhere('user',$login);
+		$cek = $model->getwhere('tb_users',$login);
 
 
 		if ($cek>0){
 			session()->set('nama',$cek->username);
-			session()->set('email',$cek->email);
 			session()->set('id',$cek->id_user);
-			session()->set('level',$cek->level);
+			session()->set('level',$cek->id_level);
 			return redirect()->to('home/index');
 		}else{
 			return redirect()->to('home/login');
 		}
-    	} else {
-        //echo "Not a Google email address";
-    		return redirect()->to('home/register');
-    	}
+    	
 
 		
 
@@ -384,7 +397,7 @@ public function data_user()
 		echo view('header', $this->logo);
 		echo view('menu', $this->logo);
 		$where=array('delete_at' => NULL);
-		$data['clara'] = $model->joinwhere('tb_petugas','tb_level','tb_level.id_level=tb_petugas.id_level',$where);
+		$data['clara'] = $model->joinwhere('tb_users','tb_level','tb_level.id_level=tb_users.id_level',$where);
 		echo view('data_user', $data);
 		echo view('footer');
 		//echo view('theme_panel');
@@ -411,7 +424,7 @@ public function data_user()
 	}
 	}
 
-	public function data_barang()
+	public function lost_item()
 	{
 		if(session()->get('level')>0){
 
@@ -419,9 +432,32 @@ public function data_user()
 			
 		echo view('header', $this->logo);
 		echo view('menu', $this->logo);
-		// $where=array('delete_at' => NULL);
-		$data['clara'] = $model->tampil('tb_barang');
-		echo view('data_barang', $data);
+		if(session()->get('level')==1){
+			$where=array('1' => 1);
+		} else {
+			$where=array('tb_barang.id_user' => session()->get('id'));
+		}
+		
+		$data['clara'] = $model->joinwhere('tb_barang','tb_users','tb_barang.id_user=tb_users.id_user',$where);
+		echo view('lost_item', $data);
+		echo view('footer');
+		//echo view('theme_panel');
+		}else{
+		return redirect()->to('home/login');
+	}
+	}
+
+	public function absen()
+	{
+		if(session()->get('level')>0){
+
+			$model=new M_kk;
+			
+		echo view('header', $this->logo);
+		echo view('menu', $this->logo);
+		// $where=array('tb_pesan.id_user' => session()->get('id'));
+		// $data['clara'] = $model->jointwowhere('tb_pesan','tb_users','tb_jenis','tb_pesan.id_user=tb_users.id_user','tb_pesan.jenis_pesanan=tb_jenis.id_jenis',$where);
+		echo view('absen');
 		echo view('footer');
 		//echo view('theme_panel');
 		}else{
@@ -474,10 +510,8 @@ public function data_user()
 		echo view('header', $this->logo);
 		echo view('menu', $this->logo);
 		// $where=array('delete_at' => NULL);
-		$data['clara'] = $model->jointhere('history_lelang','tb_lelang','tb_barang','tb_masyarakat',
-											'history_lelang.id_lelang = tb_lelang.id_lelang',
-											'history_lelang.id_barang = tb_barang.id_barang',
-											'history_lelang.id_user = tb_masyarakat.id_user');
+		$today = date('Y-m-d');
+		$data['clara'] = $model->query('SELECT * FROM tb_users left join tb_absen on tb_users.id_user=tb_absen.id_user AND DATE(waktu_absen) = "'. $today .'"');
 		echo view('data_history', $data);
 		echo view('footer');
 		//echo view('theme_panel');
@@ -523,7 +557,7 @@ public function data_user()
 	}
 	}
 
-	public function edit_barang($id)
+	public function kirim_gambar($id)
 	{
 		if(session()->get('level')>0){
 
@@ -531,8 +565,8 @@ public function data_user()
 			
 		echo view('header', $this->logo);
 		echo view('menu', $this->logo);
-		$where=array('id_barang' => $id);
-		$data['clara'] = $model->getwhere('tb_barang',$where);
+		$where=array('id_pesan' => $id);
+		$data['clara'] = $model->getwhere('tb_pesan',$where);
 		echo view('edit_barang', $data);
 		echo view('footer');
 		//echo view('theme_panel');
@@ -570,7 +604,7 @@ public function data_user()
 		//$where=array('delete_at' => NULL);
 		//$data['clara'] = $model->query('select * from user WHERE delete_at IS NOT NULL');
 		$where=array('delete_at !=' => null);
-		$data['clara'] = $model->joinwhere('tb_petugas','tb_level','tb_level.id_level=tb_petugas.id_level',$where);
+		$data['clara'] = $model->joinwhere('tb_users','tb_level','tb_level.id_level=tb_users.id_level',$where);
 		echo view('restore_user', $data);
 		echo view('footer');
 		//echo view('theme_panel');
@@ -583,11 +617,11 @@ public function data_user()
 	{
 
 			$model=new M_kk;
-			$where=array('id_petugas' => $id);
+			$where=array('id_user' => $id);
 			$isi=array(
 			'delete_at'=>date('Y-m-d H:i:s')
 			);
-			$model->edit('tb_petugas', $isi, $where);
+			$model->edit('tb_users', $isi, $where);
 			// $isi=array(
 			// 'activity_time'=>date('Y-m-d H:i:s'),
 			// 'activity'=>session()->get('nama').' delete data user '.$id
@@ -621,11 +655,11 @@ public function data_user()
 	{
 
 			$model=new M_kk;
-			$where=array('id_petugas' => $id);
+			$where=array('id_user' => $id);
 			$isi=array(
 			'delete_at'=>NULL
 			);
-			$model->edit('tb_petugas', $isi, $where);
+			$model->edit('tb_users', $isi, $where);
 		
 		return redirect()->to('home/restore_user');
 	}
@@ -651,8 +685,8 @@ public function data_user()
 			
 		echo view('header', $this->logo);
 		echo view('menu', $this->logo);
-		$where=array('id_petugas' => $id);
-		$data['clara'] = $model->getwhere('tb_petugas',$where);
+		$where=array('id_user' => $id);
+		$data['clara'] = $model->getwhere('tb_users',$where);
 		echo view('edit_user', $data);
 		echo view('footer');
 		//echo view('theme_panel');
@@ -680,12 +714,12 @@ public function data_user()
 			$na = $this->request->getPost('nama');
 			$us = $this->request->getPost('username');
 
-			$where=array('id_petugas' => $id);
+			$where=array('id_user' => $id);
 			$isi=array(
-			'nama_petugas'=>$na,
+			'nama_user'=>$na,
 			'username'=>$us
 			);
-			$model->edit('tb_petugas', $isi, $where);
+			$model->edit('tb_users', $isi, $where);
 		
 		return redirect()->to('home/data_user');
 	}
@@ -709,21 +743,36 @@ public function data_user()
 
 
 
-	public function aksi_edit_barang($id)
+	public function aksi_kirim($id)
 	{
 
 			$model=new M_kk;
-			$na = $this->request->getPost('nama');
-			$us = $this->request->getPost('harga');
-			$de = $this->request->getPost('des');
+			$ga=$this->request->getFile('gambar');
+			$namagambar = $ga->getName();
+			//print_r($namagambar);
 
-			$where=array('id_barang' => $id);
+            $model->kirim_gambarm($ga);
+
+			$where=array('id_pesan' => $id);
 			$isi=array(
-			'nama_barang'=>$na,
-			'harga_awal'=>$us,
-			'deskripsi_barang'=>$de
+			'status'=>'pembayaran',
+			'gambar'=>$namagambar
 			);
-			$model->edit('tb_barang', $isi, $where);
+			$model->edit('tb_pesan', $isi, $where);
+		
+		return redirect()->to('home/data_barang');
+	}
+
+	public function selesai($id)
+	{
+
+			$model=new M_kk;
+
+			$where=array('id_pesan' => $id);
+			$isi=array(
+			'status'=>'selesai'
+			);
+			$model->edit('tb_pesan', $isi, $where);
 		
 		return redirect()->to('home/data_barang');
 	}
@@ -775,7 +824,7 @@ public function data_user()
 			
 		echo view('header', $this->logo);
 		echo view('menu', $this->logo);
-
+		// $data['clara'] = $model->tampil('tb_jenis');
 		echo view('tambah_barang');
 		echo view('footer');
 		//echo view('theme_panel');
@@ -788,20 +837,21 @@ public function data_user()
 	{
 
 			$model=new M_kk;
-			$user = $this->request->getPost('nama');
-			$pass = $this->request->getPost('har');
-			$nl = $this->request->getPost('des');
-			$currentDate = date('Y-m-d');
+			$lokasi = $this->request->getPost('lokasi');
+			$ga=$this->request->getFile('foto');
+			$namagambar = $ga->getName();
+            $model->kirim_gambarm($ga);
+			//print_r($kode);
 			
 			$isi=array(
-			'nama_barang'=>$user,
-			'harga_awal'=>$pass,
-			'deskripsi_barang'=>$nl,
-			'tgl'=>$currentDate
+			'foto'=>$namagambar,
+			'lokasi_ketemu'=>$lokasi,
+			'id_user'=>session()->get('id'),
+			'status'=>'belum'
 			);
 			$model->tambah('tb_barang', $isi);
 		
-		return redirect()->to('home/data_barang');
+		return redirect()->to('home/lost_item');
 	}
 
 	public function tutup_lelang($id)
@@ -859,12 +909,12 @@ public function data_user()
 			$jk = $this->request->getPost('level');
 			
 			$isi=array(
-			'nama_petugas'=>$user,
+			'nama_user'=>$user,
 			'username'=>$pass,
 			'password'=>md5($nl),
 			'id_level'=>$jk
 			);
-			$model->tambah('tb_petugas', $isi);
+			$model->tambah('tb_users', $isi);
 		
 		return redirect()->to('home/data_user');
 	}
@@ -1002,6 +1052,31 @@ public function data_kendaraan()
 		
 		return redirect()->to('home/data_barang');
 	}
+	public function detail_pesan($id)
+	{
+		if(session()->get('level')>0){
+
+			$model=new M_kk;
+			
+			
+		echo view('header', $this->logo);
+		echo view('menu', $this->logo);
+		// $where=array('delete_at' => NULL);
+		$where=array('id_pesan' => $id);
+		$data['clara'] = $model->jointwowhererow('tb_pesan','tb_users','tb_jenis','tb_pesan.id_user=tb_users.id_user','tb_pesan.jenis_pesanan=tb_jenis.id_jenis',$where);
+		echo view('detail_pesan', $data);
+		echo view('footer');
+		// echo view('header', $logo);
+		// echo view('menu', $logo);
+		// $where=array('kendaraan_id' => $id);
+		// $data['clara'] = $model->getwhere('kendaraan',$where);
+		// echo view('detail_kendaraan', $data);
+		// echo view('footer');
+		//echo view('theme_panel');
+		}else{
+		return redirect()->to('home/login');
+	}
+	}
 	public function detail_kendaraan($id)
 	{
 		if(session()->get('level')>0){
@@ -1027,26 +1102,17 @@ public function data_kendaraan()
 		return redirect()->to('home/login');
 	}
 	}
-	public function edit_kendaraan($id)
+	public function kembali($id)
 	{
 
 			$model=new M_kk;
-			$nk = $this->request->getPost('nk');
-			$tk = $this->request->getPost('tk');
-			$wk = $this->request->getPost('wk');
-			$hk = $this->request->getPost('hk');
-			$where=array('kendaraan_id' => $id);
+			$where=array('id_barang' => $id);
 			$isi=array(
-			'nomor_kendaraan'=>$nk,
-			'tipe_kendaraan'=>$tk,
-			'warna_kendaraan'=>$wk,
-			'harga_kendaraan'=>$hk,
-			'update_at'=>date('Y-m-d H:i:s'),
-			'update_by'=>session()->get('id')
+			'status'=>'sudah',
 			);
-			$model->edit('kendaraan', $isi, $where);
+			$model->edit('tb_barang', $isi, $where);
 		
-		return redirect()->to('home/detail_kendaraan/'.$id);
+		return redirect()->to('home/lost_item');
 	}
 
 	public function sewa()
@@ -2028,6 +2094,57 @@ $dompdf->stream();
 
 				//session()->set('nama',$cek->nama);
 	}
+
+	public function generate() {
+        helper('qr_helper');
+        $data = 'https://yourwebsite.com'; // Data to encode
+        $qrCodePath = generateQRCode($data);
+
+        return view('tawar', ['qrCodePath' => $qrCodePath]);
+    }
+	public function membuat_qr() {
+        helper('qr_helper');
+		$model=new M_kk;
+        $data = session()->get('id'); // Data to encode
+        $qrCodePath = generateQRCode($data);
+		// print_r(basename($qrCodePath));
+		$where=array('id_user' => $data);
+			$isi=array(
+			'qr_code'=>basename($qrCodePath)
+			);
+			$model->edit('tb_users', $isi, $where);
+
+
+        // return view('tawar', ['qrCodePath' => $qrCodePath]);
+		return redirect()->to('home/index');
+    }
+
+	public function scan() {
+        return view('tutup');
+    }
+
+	public function aksi_absensi()
+    {
+		$model=new M_kk;
+        $data = $this->request->getJSON();
+		$today = date('Y-m-d');
+		$cek = $model->query_row('SELECT * FROM tb_users left join tb_absen on tb_users.id_user=tb_absen.id_user AND DATE(waktu_absen) = "'. $today .'" WHERE tb_users.id_user='. $data->decodeText .'');
+		//$cek = $model->getwhere('user',$where);
+		if ($cek->waktu_absen === NULL ){
+			$currentDateTime = date('Y-m-d H:i:s');
+			$storage=array(
+				'id_user'=>$data->decodeText,
+				'waktu_absen'=>$currentDateTime
+				);
+				$model->tambah('tb_absen',$storage);
+		} else {
+			# code...
+		}
+    return $this->response->setJSON([
+        'status' => 'success',
+        'data' => $cek->waktu_absen
+    ]);
+    }
 
 
 }
